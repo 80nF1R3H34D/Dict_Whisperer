@@ -15,8 +15,8 @@ It operates in **chunks** (default: 20 seconds), allowing for near real-time tra
 *   **Direct to Obsidian:** Creates a new Markdown file for each session and appends text as you speak.
 *   **Smart Caching:** Whisper models are downloaded once and cached locally to `models/`.
 *   **Silence Detection:** Automatically ignores quiet periods to prevent "hallucinations" (e.g., "Thanks for watching").
-*   **Visual Feedback:** A live countdown timer shows you exactly when the app is recording and when it is processing.
-*   **Configurable:** Adjust recording duration, model size (speed vs. accuracy), and vault location via command-line arguments or environment variables.
+*   **Visual Interface (GUI):** A clean interface built with PyQt6 to control dictation, view live transcripts, and manage settings.
+*   **Configurable:** Adjust recording duration, model size (speed vs. accuracy), and vault location.
 
 ---
 
@@ -31,7 +31,7 @@ It operates in **chunks** (default: 20 seconds), allowing for near real-time tra
     *   **Linux:** `sudo apt install ffmpeg` or `sudo dnf install ffmpeg`
 3.  **Git:** To download this repository.
 
-### Installation
+### Installation & Usage (The Easy Way)
 
 1.  **Clone the repository:**
     ```bash
@@ -39,43 +39,45 @@ It operates in **chunks** (default: 20 seconds), allowing for near real-time tra
     cd Dict_Whisperer
     ```
 
-2.  **Create a virtual environment (Recommended):**
+2.  **Run the automated setup script:**
     ```bash
-    # Linux/macOS
-    python3.13 -m venv .venv
-    source .venv/bin/activate
-
-    # Windows
-    python -m venv .venv
-    .venv\Scripts\activate
+    chmod +x run_dictwhisperer.sh
+    ./run_dictwhisperer.sh
     ```
-
-3.  **Install dependencies:**
-    ```bash
-    pip install -r requirements.txt
-    ```
+    This script will automatically:
+    *   Create a virtual environment (`.venv`) if it doesn't exist.
+    *   Install all dependencies (including PyQt6 and Whisper).
+    *   Launch the GUI.
 
 ---
 
-## 🎙️ Usage
+## 🎙️ Manual Usage
 
-1.  **Activate your virtual environment** (if not already active).
-2.  **Run the CLI tool:**
+If you prefer to manage the environment yourself or use the CLI:
 
-    ```bash
-    python -m dictwhisperer.cli --vault-path "/path/to/your/Obsidian/Vault"
-    ```
+### 1. Setup Environment
+```bash
+python3 -m venv .venv
+source .venv/bin/activate  # Windows: .venv\Scripts\activate
+pip install -r requirements.txt
+pip install -e .
+```
 
-    *Replace `/path/to/your/Obsidian/Vault` with the actual path to your vault.*
+### 2. Run GUI
+```bash
+python -m dictwhisperer.gui
+```
 
-3.  **Speak!** The app will record in 20-second chunks. A countdown will appear. When the countdown finishes, it transcribes and appends the text to your note.
-4.  **Stop:** Press `Ctrl+C` to end the session.
+### 3. Run CLI
+```bash
+python -m dictwhisperer.cli --vault-path "/path/to/your/Obsidian/Vault"
+```
 
 ---
 
 ## ⚙️ Configuration
 
-You can customize DictWhisperer using command-line arguments.
+You can customize DictWhisperer using the GUI settings or command-line arguments.
 
 | Argument | Default | Description |
 | :--- | :--- | :--- |
@@ -84,23 +86,6 @@ You can customize DictWhisperer using command-line arguments.
 | `--chunk-duration` | `20` | Duration (in seconds) of each recording segment. |
 
 *\*Can be set via environment variable `DICTWHISPERER_VAULT_PATH`.*
-
-### Examples
-
-**Use a faster, less accurate model:**
-```bash
-python -m dictwhisperer --model-size tiny --vault-path "..."
-```
-
-**Use a larger, more accurate model (slower):**
-```bash
-python -m dictwhisperer --model-size medium --vault-path "..."
-```
-
-**Record in 30-second chunks:**
-```bash
-python -m dictwhisperer --chunk-duration 30 --vault-path "..."
-```
 
 ### Environment Variables
 
