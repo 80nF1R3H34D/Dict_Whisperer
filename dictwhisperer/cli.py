@@ -4,17 +4,11 @@ Command-line interface for DictWhisperer.
 """
 
 import argparse
-import datetime
-import os
 import sys
-from pathlib import Path
-
+import os
+import time
 from .dictwhisperer import (
-    ensure_ffmpeg,
-    check_audio_devices,
-    record_audio,
-    transcribe_and_append,
-    load_whisper_model,
+    DictationSession,
     DEFAULT_VAULT_PATH,
     DEFAULT_MODEL_SIZE,
     DEFAULT_CHUNK_DURATION,
@@ -22,11 +16,7 @@ from .dictwhisperer import (
 
 
 def parse_args() -> argparse.Namespace:
-    """Parse command-line arguments.
-
-    Returns:
-        argparse.Namespace: Parsed arguments.
-    """
+    """Parse command-line arguments."""
     parser = argparse.ArgumentParser(
         description="Dictate to Obsidian via Whisper - Real-time voice transcription",
         formatter_class=argparse.RawDescriptionHelpFormatter,
@@ -71,56 +61,52 @@ def main() -> None:
     """Main entry point for the application."""
     args = parse_args()
 
-    # 1. System checks
-    print("[dictwhisperer] Starting pre-flight checks...")
-    ensure_ffmpeg()
-    check_audio_devices()
+    # Callbacks for CLI output
+    def on_status_change(msg: str):
+        print(f"[dictwhisperer] {msg}")
 
-    # 2. Validate vault path
-    vault_path = Path(os.path.expanduser(args.vault_path)).resolve()
-    if not vault_path.exists():
-        print(f"Error: Obsidian vault path does not exist: {vault_path}")
-        print("\nPlease either:")
-        print("  1. Use --vault-path /path/to/vault")
-        print("  2. Set DICTWHISPERER_VAULT_PATH environment variable")
-        sys.exit(1)
+    def on_progress(msg: str):
+        # Overwrite the current line for progress
+        sys.stdout.write(f"\r[dictwhisperer] {msg}   ")
+        sys.stdout.flush()
 
-    if not vault_path.is_dir():
-        print(f"Error: Vault path is not a directory: {vault_path}")
-        sys.exit(1)
+    def on_transcription(text: str):
+        # Clear the progress line before printing result
+        sys.stdout.write("\r") 
+        print(f"[dictwhisperer] Added: {text}")
 
-    # 3. Create Session File
-    timestamp = datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
-    md_filename = vault_path / f"LiveDictation_{timestamp}.md"
+    def on_error(msg: str):
+        print(f"\n[dictwhisperer] Error: {msg}")
+
+    print("[dictwhisperer] Starting CLI...")
+
+    session = DictationSession(
+        vault_path=args.vault_path,
+        model_size=args.model_size,
+        chunk_duration=args.chunk_duration,
+        on_status_change=on_status_change,
+        on_progress=on_progress,
+        on_transcription=on_transcription,
+        on_error=on_error,
+    )
 
     try:
-        with open(md_filename, "w", encoding="utf-8") as f:
-            f.write(f"# Live Dictation - {timestamp}\n\n")
-            f.write(f"*Started at: {datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')}*\n\n")
-    except Exception as e:
-        print(f"Error: Cannot write to vault path: {e}")
-        sys.exit(1)
-
-    print(f"[dictwhisperer] Markdown file created: {md_filename}")
-
-    # 4. Load Model
-    model = load_whisper_model(args.model_size)
-    print(f"[dictwhisperer] Model '{args.model_size}' loaded successfully!")
-    print(f"[dictwhisperer] Recording in {args.chunk_duration}-second chunks.")
-    print("[dictwhisperer] Press Ctrl+C to stop.\n")
-
-    # 5. Recording Loop
-    try:
+        session.initialize()
+        print(f"[dictwhisperer] Recording in {args.chunk_duration}-second chunks.")
+        print("[dictwhisperer] Press Ctrl+C to stop.\n")
+        
+        session.start()
+        
+        # Keep main thread alive
         while True:
-            audio_data = record_audio(duration=args.chunk_duration)
-            transcribe_and_append(audio_data, md_filename, model)
+            time.sleep(0.1)
 
     except KeyboardInterrupt:
-        print("\n\n[dictwhisperer] Dictation session ended.")
-        print(f"[dictwhisperer] Final transcript saved at: {md_filename}")
+        print("\n\n[dictwhisperer] Stopping...")
+        session.stop()
+        print("[dictwhisperer] Session ended.")
     except Exception as e:
-        print(f"\n[dictwhisperer] Unexpected error: {e}")
-        print(f"[dictwhisperer] Partial transcript saved at: {md_filename}")
+        print(f"[dictwhisperer] Fatal error: {e}")
         sys.exit(1)
 
 

@@ -11,12 +11,14 @@ setup(
     entry_points={
         "console_scripts": [
             "dictwhisperer = dictwhisperer.cli:main",
+            "dictwhisperer-gui = dictwhisperer.gui:main",
         ],
     },
     install_requires=[
         "openai-whisper",
         "sounddevice",
         "numpy",
+        "PyQt6",
     ],
     author="80nF1R3H34D",
     author_email="",  # Update if you have a public email
